@@ -1,0 +1,13 @@
+# Xcode
+xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
+
+# CocoaPods
+Pods/
+
+# Large model files
+*.task
+*.tflite

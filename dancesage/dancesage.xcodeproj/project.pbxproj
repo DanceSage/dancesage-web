@@ -6,13 +6,33 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AF5E7D556E763FF2C2BD785F /* Pods_dancesage.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C0BA70C53A2C44238162233 /* Pods_dancesage.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		1C0BA70C53A2C44238162233 /* Pods_dancesage.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_dancesage.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B7A603DD2EE3588A00C911BA /* dancesage.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = dancesage.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DD5834A48A88916CAA3FB230 /* Pods-dancesage.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-dancesage.debug.xcconfig"; path = "Target Support Files/Pods-dancesage/Pods-dancesage.debug.xcconfig"; sourceTree = "<group>"; };
+		F701BD9C7DA3DAE62CB81E30 /* Pods-dancesage.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-dancesage.release.xcconfig"; path = "Target Support Files/Pods-dancesage/Pods-dancesage.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B7A603FE2EE3A51600C911BA /* Exceptions for "dancesage" folder in "dancesage" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B7A603DC2EE3588900C911BA /* dancesage */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B7A603DF2EE3588A00C911BA /* dancesage */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B7A603FE2EE3A51600C911BA /* Exceptions for "dancesage" folder in "dancesage" target */,
+			);
 			path = dancesage;
 			sourceTree = "<group>";
 		};
@@ -23,17 +43,28 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AF5E7D556E763FF2C2BD785F /* Pods_dancesage.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3431F4F04C102209F3FF8ED0 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1C0BA70C53A2C44238162233 /* Pods_dancesage.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		B7A603D42EE3588900C911BA = {
 			isa = PBXGroup;
 			children = (
 				B7A603DF2EE3588A00C911BA /* dancesage */,
 				B7A603DE2EE3588A00C911BA /* Products */,
+				E9DF3A40F319F57CCB27CC8F /* Pods */,
+				3431F4F04C102209F3FF8ED0 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -45,6 +76,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		E9DF3A40F319F57CCB27CC8F /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				DD5834A48A88916CAA3FB230 /* Pods-dancesage.debug.xcconfig */,
+				F701BD9C7DA3DAE62CB81E30 /* Pods-dancesage.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -52,6 +92,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = B7A603E82EE3588B00C911BA /* Build configuration list for PBXNativeTarget "dancesage" */;
 			buildPhases = (
+				E5497EFBFF585CEB2275B32F /* [CP] Check Pods Manifest.lock */,
 				B7A603D92EE3588900C911BA /* Sources */,
 				B7A603DA2EE3588900C911BA /* Frameworks */,
 				B7A603DB2EE3588900C911BA /* Resources */,
@@ -64,8 +105,6 @@
 				B7A603DF2EE3588A00C911BA /* dancesage */,
 			);
 			name = dancesage;
-			packageProductDependencies = (
-			);
 			productName = dancesage;
 			productReference = B7A603DD2EE3588A00C911BA /* dancesage.app */;
 			productType = "com.apple.product-type.application";
@@ -113,6 +152,31 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		E5497EFBFF585CEB2275B32F /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-dancesage-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		B7A603D92EE3588900C911BA /* Sources */ = {
@@ -248,6 +312,7 @@
 		};
 		B7A603E92EE3588B00C911BA /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = DD5834A48A88916CAA3FB230 /* Pods-dancesage.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -256,8 +321,10 @@
 				DEVELOPMENT_TEAM = R8JLG26X88;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = dancesage/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Dance Sage";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_NSCameraUsageDescription = "DanceSage needs camera access to detect your dance poses";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -282,6 +349,7 @@
 		};
 		B7A603EA2EE3588B00C911BA /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F701BD9C7DA3DAE62CB81E30 /* Pods-dancesage.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -290,8 +358,10 @@
 				DEVELOPMENT_TEAM = R8JLG26X88;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = dancesage/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Dance Sage";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_NSCameraUsageDescription = "DanceSage needs camera access to detect your dance poses";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
