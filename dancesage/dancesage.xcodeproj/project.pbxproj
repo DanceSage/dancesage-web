@@ -24,7 +24,7 @@
 		B7A603FE2EE3A51600C911BA /* Exceptions for "dancesage" folder in "dancesage" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Info.plist,
+				"Supporting Files/Info.plist",
 			);
 			target = B7A603DC2EE3588900C911BA /* dancesage */;
 		};
