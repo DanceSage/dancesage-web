@@ -1,17 +1,16 @@
-//
-//  dancesageApp.swift
-//  dancesage
-//
-//  Created by Abdu Radi on 12/5/25.
-//
-
 import SwiftUI
+import FirebaseCore
 
 @main
 struct dancesageApp: App {
+    
+    init() {
+        FirebaseApp.configure()
+    }
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AuthView()
         }
     }
 }

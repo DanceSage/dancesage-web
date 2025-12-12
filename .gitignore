@@ -11,3 +11,4 @@ Pods/
 # Large model files
 *.task
 *.tflite
+dancesage/dancesage/GoogleService-Info.plist
