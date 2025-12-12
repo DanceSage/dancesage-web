@@ -3,6 +3,8 @@ import SwiftUI
 struct LandingView: View {
     @Binding var showCamera: Bool
     @State private var showVideoPicker = false
+    @State private var selectedVideoURL: URL?
+    @State private var showVideoProcessing = false
     
     var body: some View {
         VStack(spacing: 30) {
@@ -45,7 +47,17 @@ struct LandingView: View {
             Spacer()
         }
         .sheet(isPresented: $showVideoPicker) {
-            VideoPicker()
+            VideoPicker(selectedVideoURL: $selectedVideoURL)
+        }
+        .sheet(isPresented: $showVideoProcessing) {
+            if let url = selectedVideoURL {
+                VideoProcessingView(videoURL: url)
+            }
+        }
+        .onChange(of: selectedVideoURL) { oldValue, newValue in
+            if newValue != nil {
+                showVideoProcessing = true
+            }
         }
     }
 }
