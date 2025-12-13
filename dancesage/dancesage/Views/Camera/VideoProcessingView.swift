@@ -36,6 +36,21 @@ struct VideoProcessingView: View {
                     dismiss()
                 }
                 .buttonStyle(.bordered)
+            } else {
+                // Processing finished but no poses detected
+                Text("⚠️ No poses detected")
+                    .font(.headline)
+                    .foregroundColor(.orange)
+                
+                Text("Try a video with a person clearly visible")
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .padding()
+                
+                Button("Done") {
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
             }
         }
         .padding()
