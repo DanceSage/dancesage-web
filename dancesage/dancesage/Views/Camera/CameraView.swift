@@ -11,7 +11,7 @@ struct CameraView: UIViewRepresentable {
         let captureSession = AVCaptureSession()
         captureSession.sessionPreset = .high
         
-        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) else {
+        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
             print("❌ Camera not found")
             return view
         }

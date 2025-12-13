@@ -5,6 +5,7 @@ struct LandingView: View {
     @State private var showVideoPicker = false
     @State private var selectedVideoURL: URL?
     @State private var showVideoProcessing = false
+    @State private var showRecordings = false
     
     var body: some View {
         VStack(spacing: 30) {
@@ -44,6 +45,18 @@ struct LandingView: View {
                     .cornerRadius(30)
             }
             
+            // My Recordings Button
+            Button(action: {
+                showRecordings = true
+            }) {
+                Text("MY RECORDINGS")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 250, height: 60)
+                    .background(Color.purple)
+                    .cornerRadius(30)
+            }
+            
             Spacer()
         }
         .sheet(isPresented: $showVideoPicker) {
@@ -53,6 +66,9 @@ struct LandingView: View {
             if let url = selectedVideoURL {
                 VideoProcessingView(videoURL: url)
             }
+        }
+        .sheet(isPresented: $showRecordings) {
+            RecordingsListView()
         }
         .onChange(of: selectedVideoURL) { oldValue, newValue in
             if newValue != nil {
