@@ -5,22 +5,109 @@ import UIKit
 import Combine
 
 class VideoProcessor: ObservableObject {
-    @Published var keypoints: [[[CGPoint]]] = [] // Array of frames, each containing array of poses
+    @Published var keypoints: [[[CGPoint]]] = []
     @Published var isProcessing = false
     @Published var progress: Double = 0.0
     
-    private var poseLandmarker: PoseLandmarker?
+    private var videoTransform: CGAffineTransform = .identity
     
-    init() {
-        setupPoseLandmarker()
+    func processVideo(url: URL) {
+        print("🎬 STARTING NEW VIDEO PROCESSING")
+
+        isProcessing = true
+        keypoints = []
+        progress = 0.0
+        
+        let asset = AVURLAsset(url: url)
+        
+        Task {
+            do {
+                guard let videoTrack = try await asset.loadTracks(withMediaType: .video).first else {
+                    print("❌ No video track found")
+                    await MainActor.run { self.isProcessing = false }
+                    return
+                }
+                
+                let frameRate = try await videoTrack.load(.nominalFrameRate)
+                let duration = try await asset.load(.duration).seconds
+                let transform = try await videoTrack.load(.preferredTransform)
+                
+                videoTransform = transform
+                
+                print("🎬 Video duration: \(duration) seconds, frame rate: \(frameRate) fps")
+                print("🎬 Video transform: \(transform)")
+                print("🎬 Expected frames: ~\(Int(duration * Double(frameRate)))")
+                
+                await extractFrames(from: asset, frameRate: frameRate, duration: duration)
+            } catch {
+                print("❌ Error loading video: \(error)")
+                await MainActor.run { self.isProcessing = false }
+            }
+        }
     }
     
-    private func setupPoseLandmarker() {
+    private func extractFrames(from asset: AVAsset, frameRate: Float, duration: Double) async {
+        guard let poseLandmarker = createPoseLandmarker() else {
+            await MainActor.run { self.isProcessing = false }
+            return
+        }
+        
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true  // Apply rotation to extracted images
+        
+        let frameInterval = 1.0 / Double(frameRate)
+        var currentTime = 0.0
+        var allKeypoints: [[[CGPoint]]] = []
+        var timestampMs = 0
+        var frameCount = 0
+        
+        while currentTime < duration {
+            let time = CMTime(seconds: currentTime, preferredTimescale: 600)
+            
+            do {
+                let (cgImage, _) = try await generator.image(at: time)
+                let uiImage = UIImage(cgImage: cgImage)
+                frameCount += 1
+                
+                if frameCount % 30 == 0 {
+                    print("🖼️ Frame \(frameCount): size=\(uiImage.size.width)x\(uiImage.size.height)")
+                }
+                
+                if let frameKeypoints = detectPose(in: uiImage, timestamp: timestampMs, using: poseLandmarker) {
+                    allKeypoints.append(frameKeypoints)
+                    
+                    if let nose = frameKeypoints.first?.first, let ankle = frameKeypoints.first?.last {
+                        if frameCount % 30 == 0 {
+                            print("✅ Frame \(frameCount) - Nose: (\(String(format: "%.3f", nose.x)), \(String(format: "%.3f", nose.y))), Ankle: (\(String(format: "%.3f", ankle.x)), \(String(format: "%.3f", ankle.y)))")
+                        }
+                    }
+                }
+                
+                timestampMs += Int(frameInterval * 1000)
+            } catch {
+                print("❌ Frame extraction error: \(error)")
+            }
+            
+            currentTime += frameInterval
+            
+            await MainActor.run {
+                self.progress = min(currentTime / duration, 1.0)
+            }
+        }
+        
+        await MainActor.run {
+            self.keypoints = allKeypoints
+            self.isProcessing = false
+            print("✅ Processed \(frameCount) frames total, detected poses in \(allKeypoints.count) frames")
+        }
+    }
+    
+    private func createPoseLandmarker() -> PoseLandmarker? {
         let modelPath = Bundle.main.path(forResource: "pose_landmarker_heavy", ofType: "task")
         
         guard let modelPath = modelPath else {
             print("❌ Model file not found")
-            return
+            return nil
         }
         
         let options = PoseLandmarkerOptions()
@@ -29,68 +116,16 @@ class VideoProcessor: ObservableObject {
         options.numPoses = 1
         
         do {
-            poseLandmarker = try PoseLandmarker(options: options)
-            print("✅ VideoProcessor PoseLandmarker initialized")
+            let landmarker = try PoseLandmarker(options: options)
+            print("✅ PoseLandmarker initialized")
+            return landmarker
         } catch {
             print("❌ Error creating PoseLandmarker: \(error)")
+            return nil
         }
     }
     
-    func processVideo(url: URL) {
-        isProcessing = true
-        keypoints = []
-        progress = 0.0
-        
-        let asset = AVAsset(url: url)
-        guard let videoTrack = asset.tracks(withMediaType: .video).first else {
-            print("❌ No video track found")
-            isProcessing = false
-            return
-        }
-        
-        let frameRate = videoTrack.nominalFrameRate
-        let duration = asset.duration.seconds
-        
-        Task {
-            await extractFrames(from: asset, frameRate: frameRate, duration: duration)
-        }
-    }
-    
-    private func extractFrames(from asset: AVAsset, frameRate: Float, duration: Double) async {
-        let generator = AVAssetImageGenerator(asset: asset)
-        
-        let frameInterval = 1.0 / Double(frameRate)
-        var currentTime = 0.0
-        var allKeypoints: [[[CGPoint]]] = []
-        
-        while currentTime < duration {
-            let time = CMTime(seconds: currentTime, preferredTimescale: 600)
-            
-            if let cgImage = try? generator.copyCGImage(at: time, actualTime: nil) {
-                let uiImage = UIImage(cgImage: cgImage)
-                
-                if let frameKeypoints = detectPose(in: uiImage, timestamp: Int(currentTime * 1000)) {
-                    allKeypoints.append(frameKeypoints)
-                }
-            }
-            
-            currentTime += frameInterval
-            
-            await MainActor.run {
-                self.progress = currentTime / duration
-            }
-        }
-        
-        DispatchQueue.main.async {
-            self.keypoints = allKeypoints
-            self.isProcessing = false
-            print("✅ Processed \(allKeypoints.count) frames")
-        }
-    }
-    
-    private func detectPose(in image: UIImage, timestamp: Int) -> [[CGPoint]]? {
-        guard let poseLandmarker = poseLandmarker else { return nil }
-        
+    private func detectPose(in image: UIImage, timestamp: Int, using poseLandmarker: PoseLandmarker) -> [[CGPoint]]? {
         guard let mpImage = try? MPImage(uiImage: image) else {
             print("❌ Failed to convert UIImage to MPImage")
             return nil

@@ -5,6 +5,9 @@ import UIKit
 
 class PoseDetector: NSObject, ObservableObject {
     @Published var keypoints: [[CGPoint]] = []
+    @Published var recordedKeypoints: [[[CGPoint]]] = []
+    @Published var isRecording = false
+    
     private var poseLandmarker: PoseLandmarker?
     
     override init() {
@@ -48,6 +51,23 @@ class PoseDetector: NSObject, ObservableObject {
             print("❌ Detection async error: \(error)")
         }
     }
+    
+    // Recording controls
+    func startRecording() {
+        recordedKeypoints = []
+        isRecording = true
+        print("🔴 Recording started")
+    }
+    
+    func stopRecording() {
+        isRecording = false
+        print("⏹️ Recording stopped - captured \(recordedKeypoints.count) frames")
+    }
+    
+    func clearRecording() {
+        recordedKeypoints = []
+        print("🗑️ Recording cleared")
+    }
 }
 
 // MARK: - PoseLandmarkerLiveStreamDelegate
@@ -69,10 +89,6 @@ extension PoseDetector: PoseLandmarkerLiveStreamDelegate {
             return
         }
         
-        // DEBUG: Print first few landmarks
-        print("🔍 Nose (0): x=\(firstPose[0].x), y=\(firstPose[0].y)")
-        print("🔍 Left shoulder (11): x=\(firstPose[11].x), y=\(firstPose[11].y)")
-        
         // Convert landmarks to CGPoints
         let points = firstPose.map { landmark in
             CGPoint(x: CGFloat(landmark.x), y: CGFloat(landmark.y))
@@ -80,6 +96,11 @@ extension PoseDetector: PoseLandmarkerLiveStreamDelegate {
         
         DispatchQueue.main.async {
             self.keypoints = [points]
+            
+            // If recording, save this frame
+            if self.isRecording {
+                self.recordedKeypoints.append([points])
+            }
         }
     }
 }

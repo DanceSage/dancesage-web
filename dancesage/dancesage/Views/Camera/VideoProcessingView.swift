@@ -58,7 +58,7 @@ struct VideoProcessingView: View {
             videoProcessor.processVideo(url: videoURL)
         }
         .fullScreenCover(isPresented: $showPlayback) {
-            SkeletonPlaybackView(keypoints: videoProcessor.keypoints)
+            SkeletonPlaybackView(keypoints: videoProcessor.keypoints, allowSave: false)
         }
     }
 }
