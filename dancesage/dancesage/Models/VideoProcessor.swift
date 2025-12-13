@@ -76,7 +76,7 @@ class VideoProcessor: ObservableObject {
             
             currentTime += frameInterval
             
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.progress = currentTime / duration
             }
         }
