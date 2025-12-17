@@ -9,7 +9,7 @@ struct SkeletonPlaybackView: View {
     @State private var showSaveDialog = false
     @State private var recordingName = ""
     @Environment(\.dismiss) var dismiss
-    let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+    let timer = Timer.publish(every: 0.06, on: .main, in: .common).autoconnect()
     
     var body: some View {
         ZStack {
