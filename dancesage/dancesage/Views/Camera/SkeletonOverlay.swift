@@ -8,10 +8,10 @@ struct SkeletonOverlay: View {
             Canvas { context, size in
                 guard let firstPerson = keypoints.first else { return }
                 
-                // Draw circles for each keypoint (mirrored)
+                // Draw circles for each keypoint
                 for (index, point) in firstPerson.enumerated() {
                     let scaledPoint = CGPoint(
-                        x: (1.0 - point.x) * size.width,  // ← Flip horizontally
+                        x: point.x * size.width,
                         y: point.y * size.height
                     )
                     
@@ -41,11 +41,11 @@ struct SkeletonOverlay: View {
             guard start < keypoints.count, end < keypoints.count else { continue }
             
             let startPoint = CGPoint(
-                x: (1.0 - keypoints[start].x) * size.width,  // ← Flip horizontally
+                x: keypoints[start].x * size.width,
                 y: keypoints[start].y * size.height
             )
             let endPoint = CGPoint(
-                x: (1.0 - keypoints[end].x) * size.width,  // ← Flip horizontally
+                x: keypoints[end].x * size.width,
                 y: keypoints[end].y * size.height
             )
             
