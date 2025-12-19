@@ -10,6 +10,7 @@ class VideoProcessor: ObservableObject {
     @Published var progress: Double = 0.0
     
     private var videoTransform: CGAffineTransform = .identity
+    var numPoses: Int = 1  // Default to single person, can be set to 2 for partner mode
     
     func processVideo(url: URL) {
         print("🎬 STARTING NEW VIDEO PROCESSING")
@@ -113,11 +114,14 @@ class VideoProcessor: ObservableObject {
         let options = PoseLandmarkerOptions()
         options.baseOptions.modelAssetPath = modelPath
         options.runningMode = .video
-        options.numPoses = 1
+        options.numPoses = numPoses  // Use configurable number of poses
+        options.minPoseDetectionConfidence = 0.1
+        options.minPosePresenceConfidence = 0.1
+        options.minTrackingConfidence = 0.1
         
         do {
             let landmarker = try PoseLandmarker(options: options)
-            print("✅ PoseLandmarker initialized")
+            print("✅ PoseLandmarker initialized with numPoses = \(numPoses)")
             return landmarker
         } catch {
             print("❌ Error creating PoseLandmarker: \(error)")
@@ -134,13 +138,18 @@ class VideoProcessor: ObservableObject {
         do {
             let result = try poseLandmarker.detect(videoFrame: mpImage, timestampInMilliseconds: timestamp)
             
-            guard let firstPose = result.landmarks.first else { return nil }
+            guard !result.landmarks.isEmpty else { return nil }
             
-            let points = firstPose.map { landmark in
-                CGPoint(x: CGFloat(landmark.x), y: CGFloat(landmark.y))
+            // Extract ALL detected poses
+            var allPoses: [[CGPoint]] = []
+            for pose in result.landmarks {
+                let points = pose.map { landmark in
+                    CGPoint(x: CGFloat(landmark.x), y: CGFloat(landmark.y))
+                }
+                allPoses.append(points)
             }
             
-            return [points]
+            return allPoses
         } catch {
             print("❌ Detection error: \(error)")
             return nil
