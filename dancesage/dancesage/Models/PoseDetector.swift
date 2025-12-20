@@ -9,13 +9,22 @@ class PoseDetector: NSObject, ObservableObject {
     @Published var isRecording = false
     
     private var poseLandmarker: PoseLandmarker?
+    private var currentNumPoses: Int = 1  // Default to single person
     
     override init() {
         super.init()
-        setupPoseLandmarker()
+        setupPoseLandmarker(numPoses: 1)
     }
     
-    private func setupPoseLandmarker() {
+    // Add method to switch between modes
+    func setMode(numPoses: Int) {
+        guard numPoses != currentNumPoses else { return }
+        currentNumPoses = numPoses
+        setupPoseLandmarker(numPoses: numPoses)
+        print("🔄 Switched to \(numPoses == 1 ? "Styling" : "Partner") mode")
+    }
+    
+    private func setupPoseLandmarker(numPoses: Int) {
         let modelPath = Bundle.main.path(forResource: "pose_landmarker_heavy", ofType: "task")
         
         guard let modelPath = modelPath else {
@@ -26,12 +35,15 @@ class PoseDetector: NSObject, ObservableObject {
         let options = PoseLandmarkerOptions()
         options.baseOptions.modelAssetPath = modelPath
         options.runningMode = .liveStream
-        options.numPoses = 1
+        options.numPoses = numPoses  // Use the parameter
+        options.minPoseDetectionConfidence = 0.1
+        options.minPosePresenceConfidence = 0.1
+        options.minTrackingConfidence = 0.1
         options.poseLandmarkerLiveStreamDelegate = self
         
         do {
             poseLandmarker = try PoseLandmarker(options: options)
-            print("✅ PoseLandmarker initialized")
+            print("✅ PoseLandmarker initialized with numPoses = \(numPoses)")
         } catch {
             print("❌ Error creating PoseLandmarker: \(error)")
         }
@@ -72,6 +84,29 @@ class PoseDetector: NSObject, ObservableObject {
 
 // MARK: - PoseLandmarkerLiveStreamDelegate
 extension PoseDetector: PoseLandmarkerLiveStreamDelegate {
+    
+    // Map MediaPipe 33 landmarks to Vision-compatible 17 landmarks
+    // MediaPipe indices -> Vision-style indices
+    private static let landmarkMapping: [Int] = [
+        0,   // nose -> 0
+        2,   // left eye -> 1
+        5,   // right eye -> 2
+        7,   // left ear -> 3
+        8,   // right ear -> 4
+        11,  // left shoulder -> 5
+        12,  // right shoulder -> 6
+        13,  // left elbow -> 7
+        14,  // right elbow -> 8
+        15,  // left wrist -> 9
+        16,  // right wrist -> 10
+        23,  // left hip -> 11
+        24,  // right hip -> 12
+        25,  // left knee -> 13
+        26,  // right knee -> 14
+        27,  // left ankle -> 15
+        28,  // right ankle -> 16
+    ]
+    
     func poseLandmarker(_ poseLandmarker: PoseLandmarker,
                        didFinishDetection result: PoseLandmarkerResult?,
                        timestampInMilliseconds: Int,
@@ -82,24 +117,35 @@ extension PoseDetector: PoseLandmarkerLiveStreamDelegate {
             return
         }
         
-        guard let result = result, let firstPose = result.landmarks.first else {
+        guard let result = result else {
             DispatchQueue.main.async {
                 self.keypoints = []
             }
             return
         }
         
-        // Convert landmarks to CGPoints
-        let points = firstPose.map { landmark in
-            CGPoint(x: CGFloat(landmark.x), y: CGFloat(landmark.y))
+        // Extract poses with only 17 key landmarks (matching Vision)
+        var allPoses: [[CGPoint]] = []
+        
+        for pose in result.landmarks {
+            // Extract only the 17 landmarks that match Vision
+            var points: [CGPoint] = []
+            for mpIndex in PoseDetector.landmarkMapping {
+                if mpIndex < pose.count {
+                    let landmark = pose[mpIndex]
+                    points.append(CGPoint(x: CGFloat(landmark.x), y: CGFloat(landmark.y)))
+                } else {
+                    points.append(CGPoint(x: -1, y: -1))
+                }
+            }
+            allPoses.append(points)
         }
         
         DispatchQueue.main.async {
-            self.keypoints = [points]
+            self.keypoints = allPoses
             
-            // If recording, save this frame
             if self.isRecording {
-                self.recordedKeypoints.append([points])
+                self.recordedKeypoints.append(allPoses)
             }
         }
     }

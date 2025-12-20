@@ -1,15 +1,16 @@
 import SwiftUI
 import AVFoundation
+import Vision
 
-struct CameraView: UIViewRepresentable {
-    @ObservedObject var poseDetector: PoseDetector
+struct VisionCameraView: UIViewRepresentable {
+    @ObservedObject var visionDetector: VisionPoseDetector
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
         view.backgroundColor = .black
         
         let captureSession = AVCaptureSession()
-        captureSession.sessionPreset = .medium  // Lower resolution = faster multi-person detection
+        captureSession.sessionPreset = .medium  // Lower resolution for faster processing
         
         guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
             print("❌ Camera not found")
@@ -23,16 +24,16 @@ struct CameraView: UIViewRepresentable {
         
         if captureSession.canAddInput(input) {
             captureSession.addInput(input)
-            print("✅ Camera input added")
+            print("✅ Vision Camera input added")
         }
         
         // Add video output
         let videoOutput = AVCaptureVideoDataOutput()
-        videoOutput.setSampleBufferDelegate(context.coordinator, queue: DispatchQueue(label: "videoQueue"))
+        videoOutput.setSampleBufferDelegate(context.coordinator, queue: DispatchQueue(label: "visionVideoQueue"))
         
         if captureSession.canAddOutput(videoOutput) {
             captureSession.addOutput(videoOutput)
-            print("✅ Video output added")
+            print("✅ Vision Video output added")
         }
         
         let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
@@ -44,7 +45,7 @@ struct CameraView: UIViewRepresentable {
         
         DispatchQueue.global(qos: .userInitiated).async {
             captureSession.startRunning()
-            print("✅ Camera session started")
+            print("✅ Vision Camera session started")
         }
         
         return view
@@ -57,37 +58,30 @@ struct CameraView: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(poseDetector: poseDetector)
+        Coordinator(visionDetector: visionDetector)
     }
     
     class Coordinator: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         var previewLayer: AVCaptureVideoPreviewLayer?
         var captureSession: AVCaptureSession?
-        let poseDetector: PoseDetector
+        let visionDetector: VisionPoseDetector
         private var lastTimestamp = 0
         
-        init(poseDetector: PoseDetector) {
-            self.poseDetector = poseDetector
+        init(visionDetector: VisionPoseDetector) {
+            self.visionDetector = visionDetector
         }
         
         func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
             guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
             
-            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-            let context = CIContext()
-            
-            // Fix orientation - rotate image based on device orientation
-            let rotatedImage = ciImage.oriented(.right) // Try .right first
-            
-            guard let cgImage = context.createCGImage(rotatedImage, from: rotatedImage.extent) else { return }
-            let image = UIImage(cgImage: cgImage)
-            
             let timestamp = Int(Date().timeIntervalSince1970 * 1000)
-            // Process every 50ms (~20fps) for better multi-person tracking
+            // Process every 50ms (~20fps) for good multi-person tracking
             if timestamp - lastTimestamp > 50 {
-                poseDetector.detectAsync(image: image, timestamp: timestamp)
+                // Use pixel buffer directly with proper orientation for accurate coordinates
+                visionDetector.detectPoses(in: pixelBuffer, orientation: .right)
                 lastTimestamp = timestamp
             }
         }
     }
 }
+

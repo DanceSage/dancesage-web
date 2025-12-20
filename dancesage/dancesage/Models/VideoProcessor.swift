@@ -1,18 +1,25 @@
 import Foundation
 import AVFoundation
-import MediaPipeTasksVision
+import Vision
 import UIKit
 import Combine
 
+/// Video processor using Apple Vision for reliable pose detection
 class VideoProcessor: ObservableObject {
     @Published var keypoints: [[[CGPoint]]] = []
     @Published var isProcessing = false
     @Published var progress: Double = 0.0
     
-    private var videoTransform: CGAffineTransform = .identity
+    // 17-point format matching VisionPoseDetector
+    private let jointOrder: [VNHumanBodyPoseObservation.JointName] = [
+        .nose, .leftEye, .rightEye, .leftEar, .rightEar,
+        .leftShoulder, .rightShoulder, .leftElbow, .rightElbow,
+        .leftWrist, .rightWrist, .leftHip, .rightHip,
+        .leftKnee, .rightKnee, .leftAnkle, .rightAnkle
+    ]
     
     func processVideo(url: URL) {
-        print("🎬 STARTING NEW VIDEO PROCESSING")
+        print("🎬 STARTING VIDEO PROCESSING (Apple Vision)")
 
         isProcessing = true
         keypoints = []
@@ -30,12 +37,8 @@ class VideoProcessor: ObservableObject {
                 
                 let frameRate = try await videoTrack.load(.nominalFrameRate)
                 let duration = try await asset.load(.duration).seconds
-                let transform = try await videoTrack.load(.preferredTransform)
-                
-                videoTransform = transform
                 
                 print("🎬 Video duration: \(duration) seconds, frame rate: \(frameRate) fps")
-                print("🎬 Video transform: \(transform)")
                 print("🎬 Expected frames: ~\(Int(duration * Double(frameRate)))")
                 
                 await extractFrames(from: asset, frameRate: frameRate, duration: duration)
@@ -47,45 +50,37 @@ class VideoProcessor: ObservableObject {
     }
     
     private func extractFrames(from asset: AVAsset, frameRate: Float, duration: Double) async {
-        guard let poseLandmarker = createPoseLandmarker() else {
-            await MainActor.run { self.isProcessing = false }
-            return
-        }
-        
         let generator = AVAssetImageGenerator(asset: asset)
-        generator.appliesPreferredTrackTransform = true  // Apply rotation to extracted images
+        generator.appliesPreferredTrackTransform = true
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
         
-        let frameInterval = 1.0 / Double(frameRate)
+        // Process at ~15fps for speed (skip frames if video is higher fps)
+        let targetFPS: Double = 15
+        let frameInterval = max(1.0 / Double(frameRate), 1.0 / targetFPS)
         var currentTime = 0.0
         var allKeypoints: [[[CGPoint]]] = []
-        var timestampMs = 0
         var frameCount = 0
+        var detectedCount = 0
         
         while currentTime < duration {
             let time = CMTime(seconds: currentTime, preferredTimescale: 600)
             
             do {
                 let (cgImage, _) = try await generator.image(at: time)
-                let uiImage = UIImage(cgImage: cgImage)
                 frameCount += 1
                 
-                if frameCount % 30 == 0 {
-                    print("🖼️ Frame \(frameCount): size=\(uiImage.size.width)x\(uiImage.size.height)")
-                }
-                
-                if let frameKeypoints = detectPose(in: uiImage, timestamp: timestampMs, using: poseLandmarker) {
+                if let frameKeypoints = detectPose(in: cgImage) {
                     allKeypoints.append(frameKeypoints)
-                    
-                    if let nose = frameKeypoints.first?.first, let ankle = frameKeypoints.first?.last {
-                        if frameCount % 30 == 0 {
-                            print("✅ Frame \(frameCount) - Nose: (\(String(format: "%.3f", nose.x)), \(String(format: "%.3f", nose.y))), Ankle: (\(String(format: "%.3f", ankle.x)), \(String(format: "%.3f", ankle.y)))")
-                        }
-                    }
+                    detectedCount += 1
                 }
                 
-                timestampMs += Int(frameInterval * 1000)
+                if frameCount % 30 == 0 {
+                    print("🍎 Frame \(frameCount): detected \(detectedCount) poses so far")
+                }
+                
             } catch {
-                print("❌ Frame extraction error: \(error)")
+                print("❌ Frame extraction error at \(currentTime)s: \(error)")
             }
             
             currentTime += frameInterval
@@ -98,51 +93,40 @@ class VideoProcessor: ObservableObject {
         await MainActor.run {
             self.keypoints = allKeypoints
             self.isProcessing = false
-            print("✅ Processed \(frameCount) frames total, detected poses in \(allKeypoints.count) frames")
+            print("✅ Processed \(frameCount) frames, detected poses in \(allKeypoints.count) frames")
         }
     }
     
-    private func createPoseLandmarker() -> PoseLandmarker? {
-        let modelPath = Bundle.main.path(forResource: "pose_landmarker_heavy", ofType: "task")
-        
-        guard let modelPath = modelPath else {
-            print("❌ Model file not found")
-            return nil
-        }
-        
-        let options = PoseLandmarkerOptions()
-        options.baseOptions.modelAssetPath = modelPath
-        options.runningMode = .video
-        options.numPoses = 1
+    private func detectPose(in cgImage: CGImage) -> [[CGPoint]]? {
+        let request = VNDetectHumanBodyPoseRequest()
+        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
         
         do {
-            let landmarker = try PoseLandmarker(options: options)
-            print("✅ PoseLandmarker initialized")
-            return landmarker
-        } catch {
-            print("❌ Error creating PoseLandmarker: \(error)")
-            return nil
-        }
-    }
-    
-    private func detectPose(in image: UIImage, timestamp: Int, using poseLandmarker: PoseLandmarker) -> [[CGPoint]]? {
-        guard let mpImage = try? MPImage(uiImage: image) else {
-            print("❌ Failed to convert UIImage to MPImage")
-            return nil
-        }
-        
-        do {
-            let result = try poseLandmarker.detect(videoFrame: mpImage, timestampInMilliseconds: timestamp)
+            try handler.perform([request])
             
-            guard let firstPose = result.landmarks.first else { return nil }
-            
-            let points = firstPose.map { landmark in
-                CGPoint(x: CGFloat(landmark.x), y: CGFloat(landmark.y))
+            guard let observations = request.results, !observations.isEmpty else {
+                return nil
             }
             
-            return [points]
+            // Get first person only (single person mode)
+            guard let observation = observations.first else { return nil }
+            
+            var points: [CGPoint] = []
+            
+            for joint in jointOrder {
+                if let point = try? observation.recognizedPoint(joint), point.confidence > 0.1 {
+                    // Flip Y for screen coordinates
+                    let screenPoint = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+                    points.append(screenPoint)
+                } else {
+                    points.append(CGPoint(x: -1, y: -1))
+                }
+            }
+            
+            return [points]  // Return as array for compatibility
+            
         } catch {
-            print("❌ Detection error: \(error)")
+            print("❌ Vision detection error: \(error)")
             return nil
         }
     }

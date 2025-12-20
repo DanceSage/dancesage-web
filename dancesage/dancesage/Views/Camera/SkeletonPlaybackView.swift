@@ -4,6 +4,7 @@ import Combine
 struct SkeletonPlaybackView: View {
     let keypoints: [[[CGPoint]]]
     let allowSave: Bool  // New parameter to control if save button shows
+    var useVisionIndices: Bool = false  // For Vision vs MediaPipe joint mapping
     @State private var currentFrame = 0
     @State private var isPlaying = false
     @State private var showSaveDialog = false
@@ -16,7 +17,7 @@ struct SkeletonPlaybackView: View {
             Color.black.ignoresSafeArea()
             
             if !keypoints.isEmpty && currentFrame < keypoints.count {
-                SkeletonOverlay(keypoints: keypoints[currentFrame])
+                SkeletonOverlay(keypoints: keypoints[currentFrame], useVisionIndices: useVisionIndices)
             }
             
             VStack {
