@@ -108,22 +108,33 @@ class VideoProcessor: ObservableObject {
                 return nil
             }
             
-            // Get first person only (single person mode)
-            guard let observation = observations.first else { return nil }
+            // Detect ALL people (styling = green, partner = red)
+            var allPeople: [[CGPoint]] = []
             
-            var points: [CGPoint] = []
-            
-            for joint in jointOrder {
-                if let point = try? observation.recognizedPoint(joint), point.confidence > 0.1 {
-                    // Flip Y for screen coordinates
-                    let screenPoint = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
-                    points.append(screenPoint)
-                } else {
-                    points.append(CGPoint(x: -1, y: -1))
+            for observation in observations {
+                var points: [CGPoint] = []
+                
+                for joint in jointOrder {
+                    if let point = try? observation.recognizedPoint(joint), point.confidence > 0.1 {
+                        // Flip Y for screen coordinates
+                        let screenPoint = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+                        points.append(screenPoint)
+                    } else {
+                        points.append(CGPoint(x: -1, y: -1))
+                    }
                 }
+                
+                allPeople.append(points)
             }
             
-            return [points]  // Return as array for compatibility
+            // Sort by X position (leftmost person first) for consistent coloring
+            allPeople.sort { person1, person2 in
+                let hip1 = person1.count > 11 ? person1[11] : CGPoint(x: 0.5, y: 0.5)
+                let hip2 = person2.count > 11 ? person2[11] : CGPoint(x: 0.5, y: 0.5)
+                return hip1.x < hip2.x
+            }
+            
+            return allPeople
             
         } catch {
             print("❌ Vision detection error: \(error)")
