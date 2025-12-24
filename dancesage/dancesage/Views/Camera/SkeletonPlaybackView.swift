@@ -53,8 +53,8 @@ struct SkeletonPlaybackView: View {
                 SkeletonOverlay(keypoints: keypoints[currentFrame], useVisionIndices: useVisionIndices)
             }
             
+            // Top bar: X button (left), Save button (right)
             VStack {
-                // Top buttons
                 HStack {
                     Button(action: {
                         dismiss()
@@ -63,26 +63,6 @@ struct SkeletonPlaybackView: View {
                             .font(.system(size: 40))
                             .foregroundColor(.white)
                             .padding()
-                    }
-                    
-                    Spacer()
-                    
-                    // Beat counter display
-                    if !beats.isEmpty {
-                        VStack(spacing: 4) {
-                            Text("Beat")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            Text("\(beatNumber)")
-                                .font(.system(size: 48, weight: .bold, design: .rounded))
-                                .foregroundColor(beatFlash ? .yellow : .white)
-                            if bpm > 0 {
-                                Text("\(Int(bpm)) BPM")
-                                    .font(.caption)
-                                    .foregroundColor(.purple)
-                            }
-                        }
-                        .padding()
                     }
                     
                     Spacer()
@@ -101,46 +81,103 @@ struct SkeletonPlaybackView: View {
                 }
                 
                 Spacer()
-                
-                // 8-count visual indicator
-                if !beats.isEmpty {
-                    HStack(spacing: 8) {
-                        ForEach(1...8, id: \.self) { beat in
-                            Circle()
-                                .fill(beat == beatNumber ? Color.yellow : Color.gray.opacity(0.5))
-                                .frame(width: beat == beatNumber ? 20 : 12, height: beat == beatNumber ? 20 : 12)
-                                .animation(.easeInOut(duration: 0.1), value: beatNumber)
+            }
+            
+            // Left side: Beat counter + 8-count dots (vertical, under X button)
+            HStack {
+                VStack(alignment: .leading, spacing: 12) {
+                    Spacer()
+                        .frame(height: 60)  // Space for X button
+                    
+                    // Beat counter
+                    if !beats.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Beat")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Text("\(beatNumber)")
+                                .font(.system(size: 48, weight: .bold, design: .rounded))
+                                .foregroundColor(.yellow)
+                            if bpm > 0 {
+                                Text("\(Int(bpm)) BPM")
+                                    .font(.caption)
+                                    .foregroundColor(.purple)
+                            }
                         }
-                    }
-                    .padding(.bottom, 10)
-                }
-                
-                Text("Frame \(currentFrame + 1) / \(keypoints.count)")
-                    .foregroundColor(.white)
-                Text(String(format: "%.2fs", currentTime))
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .padding(.bottom, 10)
-                
-                HStack(spacing: 30) {
-                    Button(action: {
-                        togglePlayback()
-                    }) {
-                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.white)
+                        
+                        // 8-count dots (vertical)
+                        VStack(spacing: 6) {
+                            ForEach(1...8, id: \.self) { beat in
+                                Circle()
+                                    .fill(beat == beatNumber ? Color.yellow : Color.gray.opacity(0.5))
+                                    .frame(width: beat == beatNumber ? 14 : 8, height: beat == beatNumber ? 14 : 8)
+                                    .animation(.easeInOut(duration: 0.1), value: beatNumber)
+                            }
+                        }
+                        .padding(.top, 8)
                     }
                     
-                    Button(action: {
-                        resetPlayback()
-                    }) {
-                        Image(systemName: "arrow.counterclockwise.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.white)
-                    }
+                    Spacer()
                 }
-                .padding(.bottom, 50)
+                .padding(.leading)
+                
+                Spacer()
             }
+            
+            // Bottom left: Frame counter
+            VStack {
+                Spacer()
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Frame")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Text("\(currentFrame + 1)")
+                            .font(.system(size: 24, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white)
+                        Text("/ \(keypoints.count)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        
+                        Text(String(format: "%.2fs", currentTime))
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .padding(.top, 2)
+                    }
+                    .padding()
+                    
+                    Spacer()
+                }
+            }
+            
+            // Bottom right: Play/Reset buttons (vertical)
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    
+                    VStack(spacing: 20) {
+                        Button(action: {
+                            togglePlayback()
+                        }) {
+                            Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.white)
+                        }
+                        
+                        Button(action: {
+                            resetPlayback()
+                        }) {
+                            Image(systemName: "arrow.counterclockwise.circle.fill")
+                                .font(.system(size: 50))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 40)
+                }
+            }
+            
         }
         .onAppear {
             setupAudioPlayer()
